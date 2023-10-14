@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Robert Rattray's portfolio">
+        
+        <title itemprop="name">Dots and boxes</title>
+        <link rel="canonical" href="//nationalrecordingregistry.net/games/dotsandboxes" itemprop="url">
+        <link rel="stylesheet" href="../css/main.css">
+    </head>
+    <body>
+        <div class="generaltext">
+            <h1>Dots and boxes</h1>
+            <p>Dots and boxes is a traditional game of unknown origin, in which (usually) two
+                players take turns drawing line segments between adjacent dots arranged in a grid.
+                If a player draws a line that encloses a square of four dots, that player claims 
+                that square as a score, and, in most people's telling of the game, may draw another line
+                in the same turn, repeating until no more squares are finished with one line.
+            </p>
+            <p>In this implementation, one has the option to play with or without the rule 
+                giving players another turn upon closing a square (it's so much easier without that
+                this implementation was rare, even when the game was played on paper).  Players also
+                have the option to undo their most recent move, undoing the AI's in the process (this
+                has never, to my knowledge, been possible on paper).
+            </p>
+            <p>The AI in question is a fairly simple gaming AI which runs recursively, looking at
+                every possible move within a fixed number of turns (chosen in the difficulty text box);
+                it proceeds to make the move which makes it the highest average score based on all possible 
+                outcomes from it in the future.  Once a move is made, it discards its outcomes from other moves,
+                and calculates another generation of outcomes from all moves after all series of moves it 
+                had considered after the one that was made.
+            </p>
+        </div>
+        <div class="generaltext">
+            <h1>Play game</h1>
+            <div style="padding: 20px">
+                <select name="player" id="player", style="height: 24px; margin: 0px 20px; padding: 0px 5px">
+                    <option value="0">Human plays first</option>
+                    <option value="1">AI plays first</option>
+                </select>
+                <label for="d_c">Difficulty:  </label>
+                <input id = "d_c" type="number" step="1" min="1" value="6" style="width: 60px">
+                <label for="x_c" style="margin-left: 10px">Columns:  </label>
+                <input id = "x_c" type="number" step="1" min="2" value="5" style="width: 30px">
+                <label for="y_c" style="margin-left: 10px">Rows:  </label>
+                <input id = "y_c" type="number" step="1" min="2" value="5" style="width: 30px">
+                <br>
+                <label for="rule">Completing a square </label>
+                <select name="rule" id="rule", style="height: 24px;">
+                    <option value="0">doesn't</option>
+                    <option value="1">does</option>
+                </select> 
+                extend one's turn.
+            </div>
+            <div>
+                <button id="back_button" style="font: 18px sans-serif; color: white; background-color: blue; float: right; width: 100px;">Back</button>
+                <button id="start_button" style="font: 24px sans-serif; color: white; background-color: green; display: block; margin: auto; width: 200px;">Start new game</button><br>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: center;">
+                <canvas id="screen" width="420" height = "420" style="border: 1px solid black; background-color: darkslategray;"></canvas><br>
+            </div>
+            <div style="display: flex; margin-top: 10px; align-items: center; justify-content: center;">
+                <div id="turner" style="background-color: green; font: 36px sans-serif; text-align: justify; color: white; padding: 20px; display: inline-block; margin: auto;">Your turn</div>
+            </div>
+        </div>
+        <script src="dots_and_crosses.js"></script>
+        <script>
+            const main_screen = document.getElementById("screen");
+            const main_board = new Real_Board(0,0,0,0,0, main_screen, document.getElementById("turner"));
+            start_game();
+            
+            main_screen.addEventListener("mousemove", (event) => { main_board.handle_hover(event); } );
+            main_screen.addEventListener("mouseleave", () => { main_board.erase_highlighted(); });
+            main_screen.addEventListener("click", (event) => { main_board.handle_click(event); } );
+            document.getElementById("back_button").addEventListener("click", main_board.move_back, false);
+            document.getElementById("start_button").addEventListener("click", start_game, false);
+            
+            function start_game() {
+                main_board.adjust(document.getElementById("x_c").value, document.getElementById("y_c").value, document.getElementById("player").value, document.getElementById("rule").value, document.getElementById("d_c").value);
+                main_board.draw_blank();
+            }
+        </script>
+    </body>
+</html>
