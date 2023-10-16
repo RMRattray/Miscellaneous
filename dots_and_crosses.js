@@ -1,13 +1,18 @@
+// Moves are recorded as this object, in a board's "last" property and in the real board's history.
 class Move {
     constructor(t, v, i, j, s = []) {
         this.t = t; // Whether the move was made by AI
         this.v = v; // Whether the move is a vertical line
         this.i = i; // x-coordinate of the start (upper left) of the line
         this.j = j; // the same
-        this.s = s; // squares that this move causes to fill
+        this.s = s; // squares that this move causes to fill (as an array of arrays, e.g. [ [1,2], [2, 2] ] )
+                        // if those two squares get filled in
     }
 }
 
+// The board class is an abstract - a state that the board can be in.
+// It has child boards - the ks property - the states that it could be
+// in after any possible move is made.  State includes whose turn it is.
 class Board {
     x; // The number of columns of dots in the board
     y; // The number of rows in the board
@@ -41,17 +46,19 @@ class Board {
         this.ks = []; // Its child boards
     }
 
-    vert(i, j, set=false) {
+    vert(i, j, set=false, reset=false) {
         if (set) this.v[i + this.x * j] = true;
+        if (reset) this.v[i + this.x * j] = false;
         return this.v[i + this.x * j];
     }
 
-    horiz(i, j, set=false) {
+    horiz(i, j, set=false, reset=false) {
         if (set) this.h[i * this.y + j] = true;
+        if (reset) this.h[i * this.y + j] = false;
         return this.h[i * this.y + j];
     }
 
-    make_move(i, j, vert) { // This method makes the given move, assigning to the board's last property,
+    make_move(i, j, vert) { // This method makes the given move, assigning to the board's "last" property,
         this.last = new Move(this.ait, vert, i, j);
         this.l++;
         if (vert) {
@@ -76,7 +83,7 @@ class Board {
             if (this.ait) this.as += this.last.s.length; // updating the score accordingly
             else this.ps += this.last.s.length;
         }
-        if (!(this.last.s.length && this.r)) {
+        if (!this.r || this.last.s.length == 0) {
             this.ait = !this.ait; // and changing the turn
         }
     }
@@ -123,6 +130,7 @@ class Board {
     }
 }
 
+// The real board has access to the screen and the turn-indicator
 class Real_Board extends Board {
     constructor(x, y, t, r, n, ctx, ind) {
         super(x, y, t, 0, (r=="1"), 0, 0);
@@ -133,7 +141,7 @@ class Real_Board extends Board {
         this.ind = ind; // The graphic indicating on-screen whose turn it is
 
         // Constant properties of graphics
-        this.ctx.lineWidth = 8;
+        this.ctx.lineWidth = "8px";
         this.d = 20; // Diameter of dots
         this.s = (this.screen.height - this.y * this.d) / (this.y - 1); // Length of squares
 
@@ -143,7 +151,7 @@ class Real_Board extends Board {
     }
 
     // Adjusting the board's properties effectively eliminates any game
-    // that may have been played on it.
+    // that may have been played on it.  This method is called by the start new game button.
     adjust(x, y, t, r, n) {
         this.x = x;
         this.y = y;
@@ -164,6 +172,7 @@ class Real_Board extends Board {
         this.ks = []; // objects here - in C I would worry a lot about memory leak here
 
         if (this.ait) this.start_ai_turn();
+        else this.finish_ai_turn(false);
     }
 
     // AI sets the indicator to blue and chooses its move;
@@ -196,8 +205,10 @@ class Real_Board extends Board {
                 this.draw_square(element[0], element[1], true, false);
             })
         
-            let that = this; // Return graphics to normal later
-            setTimeout(function() { that.finish_ai_turn(this.ait) }, 1000);
+            let that = this;
+            let keep_control = this.ait; // Return graphics to normal later
+            setTimeout(function() {
+                that.finish_ai_turn(keep_control); }, 1000);
             if (!this.ait) this.ait = true; // if this.ait has changed back, take control back so player cannot highlight until line is drawn
         }
 
@@ -388,15 +399,18 @@ class Real_Board extends Board {
         if (this.ks.length == 0) this.get_kids();
         this.draw_line(i, j, vert);
         this.make_move(i, j, vert); // Make move establishes the last move property,
+        this.last.s.forEach( (element) => {
+            this.draw_square(element[0], element[1], false, false);
+        })
         this.history.push(this.last); // to be pushed to the history,
         let sameboard = this.ks.find( (element) => { // and compared with the kids, to move down in the move tree
             return (element.last.i == i && element.last.j == j && element.last.v == vert)
         });
-        this.last.s.forEach( (element) => {
-            this.draw_square(element[0], element[1], false, false);
-        })
         this.ks = sameboard.ks;
-        if (this.ait) { // Officially conduct the AI's turn once the line is drawn
+        if (this.l == this.m) {
+            this.game_over();
+        }
+        else if (this.ait) { // Officially conduct the AI's turn once the line is drawn
             let that = this;
             window.setTimeout( function() { that.start_ai_turn(); }, 1000);
         }
@@ -417,8 +431,37 @@ class Real_Board extends Board {
         }
     }
 
-    move_back() {
-        console.log("Undoing move.");
+    undo_move() { // Undoes the most recent move in the history of the board
+        // Only called in the move_back button, which also checks for that move's existence
+        this.last = this.history.pop();
+        this.draw_line(this.last.i, this.last.j, this.last.v, false, true);
+        this.last.s.forEach( (element) => {
+            this.draw_square(element[0], element[1], false, true);
+        })
+        if (this.last.v) {
+            this.vert(this.last.i, this.last.j, false, true);
+        }
+        else { this.horiz(this.last.i, this.last.j, false, true); }
+        if (!(this.r && this.last.s.length > 0)) {
+            this.ait = !this.ait;
+        }
+    }
+
+    move_back() {  
+        if (!this.ait && this.history.length > 0) {
+            this.undo_move();
+            this.ks = []; // Since kid boards disappear from access as moves are made, we'll have to start over on
+            // calculating them when we go back
+            while(this.ait && this.history.length > 0) {
+                this.undo_move();
+            }
+            if (this.history.length > 0) {
+                this.last = this.history[this.history.length - 1];
+            }
+            else {
+                this.last = 0;
+            }
+        }
     }
 
     game_over() {
