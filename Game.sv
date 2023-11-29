@@ -10,7 +10,7 @@
 
 // This file is a Verilog file meant to run on the ECE270 FPGA used in school.
 // It implements a game in the vein of rhythm arcade games (e.g. Guitar Hero, Dance Dance Revolution)
-// wherein the player tries to press an indicated key in an increasingly short span of time - 
+// wherein the player tries to press an indicated key in an increasingly short span of time -
 // initially, the player has 99 centiseconds, but this ticks down with every success.  Low scores win.
 
 `default_nettype none
@@ -34,10 +34,10 @@ module top (
   // keysync k0( .clk(hz100), .rst(reset), .ins(pb[15:10]), .keyclk(red), .choice(right[2:0]));
   // logic [7:0] num;
   // logic [7:0] score;
-  // ssdec s0( .in(num[7:4]), .enable(1'b1), .out(ss1[6:0]));
-  // ssdec s1( .in(num[3:0]), .enable(1'b1), .out(ss0[6:0]));
-  // ssdec sa( .in(pb[7:4]), .enable(1'b1), .out(ss5[6:0]));
-  // ssdec sb( .in(pb[3:0]), .enable(1'b1), .out(ss4[6:0]));
+  // seven_seg s0( .in(num[7:4]), .enable(1'b1), .out(ss1[6:0]));
+  // seven_seg s1( .in(num[3:0]), .enable(1'b1), .out(ss0[6:0]));
+  // seven_seg sa( .in(pb[7:4]), .enable(1'b1), .out(ss5[6:0]));
+  // seven_seg sb( .in(pb[3:0]), .enable(1'b1), .out(ss4[6:0]));
   // bcdinc b0( .indigs(pb[7:0]), .dec(pb[19]), .outdigs(num));
   // assign score = 8'h42;
   // timer t0( .clk(hz100), .rst(pb[19]), .score(score), .time_now(num), .time_up(red));
@@ -48,14 +48,12 @@ module top (
   logic keyclk, time_up;
   logic [7:0] time_now, score;
   assign red = time_up & |state;
-  
-  assign right[2:0] = state;
  
   keysync k0( .clk(hz100), .rst(reset), .ins(pb[15:10]), .keyclk(keyclk), .choice(keyout));
   timer t0( .clk(hz100), .rst(reset), .keyclk(keyclk), .score(score), .time_now(time_now), .time_up(time_up));
  
   leveler l0( .clk(hz100), .rst(reset), .state(state), .n_state(next_level), .dot(dot));
-  // lights l1( .dot(dot), .left(left), .right(right));
+  lights l1( .dot(dot), .left(left), .right(right));
  
   central c0( .rst(reset), .time_up(time_up), .keyclk(keyclk), .keyout(keyout), .n_state(next_level), .score(score), .state(state));
   display d0( .state(state), .time_now(time_now), .score(score), .ss7(ss7), .ss6(ss6), .ss5(ss5), .ss4(ss4), .ss3(ss3), .ss2(ss2), .ss1(ss1), .ss0(ss0) );
@@ -63,7 +61,7 @@ endmodule
 
 // Central module controls the state, setting it to seven when time runs out in gameplay
 // or a player hits the wrong key, or to the next level should a player hit the correct key.
-// "State" is 000 in the beginning, "111" after the game, and some value in between during the 
+// "State" is 000 in the beginning, "111" after the game, and some value in between during the
 // game, that valuing indicating the key that the player is instructed to hit.
 
 // This module also decrements and resets the score.
@@ -76,7 +74,7 @@ module central (
 
   logic [2:0] real_n_state;
   logic [7:0] real_n_score, n_score;
-  
+ 
   bcdec b0( .indigs(score), .outdigs(n_score));
  
   always_comb begin
@@ -120,10 +118,10 @@ module display (
   output logic [7:0] ss7, ss6, ss5, ss4, ss3, ss2, ss1, ss0);
 
   logic [15:0] time_bus, score_bus;
-  ssdec s0( .in(time_now[7:4]), .enable(1'b1), .out(time_bus[14:8]));
-  ssdec s1( .in(time_now[3:0]), .enable(1'b1), .out(time_bus[6:0]));
-  ssdec s2( .in(score[7:4]), .enable(1'b1), .out(score_bus[14:8]));
-  ssdec s3( .in(score[3:0]), .enable(1'b1), .out(score_bus[6:0]));
+  seven_seg s0( .in(time_now[7:4]), .out(time_bus[14:8]));
+  seven_seg s1( .in(time_now[3:0]), .out(time_bus[6:0]));
+  seven_seg s2( .in(score[7:4]), .out(score_bus[14:8]));
+  seven_seg s3( .in(score[3:0]), .out(score_bus[6:0]));
   assign { score_bus[15], time_bus[15], score_bus[7], time_bus[7] } = 4'b0000;
  
   logic [7:0] state_bus;
@@ -215,7 +213,7 @@ module timer (
   logic [7:0] next_time, time_minus_one;
   bcdec b0( .indigs(time_now), .outdigs(time_minus_one));
   assign time_up = ~|time_now[7:0];
-  
+ 
   always_comb begin
     if (keyclk) next_time = score;
     else if (|time_now) next_time = time_minus_one;
