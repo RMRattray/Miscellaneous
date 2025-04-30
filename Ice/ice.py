@@ -133,7 +133,7 @@ def ice_line(junk_source, line, m):
 # coming from spam files is given by p
 def ice(fname, m, p):
     # Retrieve list of random words
-    junksource = JunkSource(m, p, "src/google-10000-english.txt")
+    junksource = JunkSource(m, p, "google-10000-english.txt")
 
     with open(fname, "r", encoding="utf-8") as f:
         with open(fname.split(".")[0] + ".ice", "w", encoding="utf-8") as out:
