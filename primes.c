@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 long long int quick_sqrt(long long int x) {
     long long int min = 0;
@@ -21,8 +22,10 @@ void mark_nth_bit(unsigned char * sieve, int n) {
 }
 
 int main(int argc, char * * argv) {
-    if (argc < 2) return 1;
+    if (argc < 3) return 1;
     int area_code = atoi(argv[1]);
+    int mod = atoi(argv[2]);
+    if (mod == 0 || mod & 1) return 1; // no primes are an odd number apart except 2 and 3
     if (area_code > 999) return 1;
 
     long long int min = 10000000; min *= area_code;
@@ -50,15 +53,20 @@ int main(int argc, char * * argv) {
         }
     }
 
+    bool * mods = malloc(mod * sizeof(bool));
+
     unsigned char * sieve_ctr = sieve;
     ++min;
     while (sieve_ctr - sieve < 4999999 / 8 + 1) {
         unsigned char mask = 1;
         while (mask) {
-            if (!(*sieve_ctr & mask)) printf("%lld ", min);
+            if (!(*sieve_ctr & mask)) {
+                if (mods[min % mod]) printf("%lld %lld\n", min, min - mod);
+                mods[min % mod] = true;
+            }
+            else mods[min % mod] = false;
             min += 2; mask = (mask << 1);
         }
-        printf("\n");
         ++sieve_ctr;
     }
 
